@@ -8,6 +8,9 @@
     <script src="https://rawgit.com/google-ar/three.ar.js/master/dist/three.ar.js"></script>
     <script src="https://rawgit.com/chenzlabs/aframe-ar/experimental-planes/dist/aframe-ar.min.js"></script>
     <script src="grid-shader.js"></script>    
+
+    <!-- Prevent touch causing flicker on iOS. -->
+    <style> * { -webkit-tap-highlight-color: rgba(0,0,0,0); } </style>    
   </head>
   <body>    
     <script>
@@ -236,7 +239,7 @@ AFRAME.registerGeometry('polygon', {
           var point = evt.detail.intersections[0].point;
           var distance = evt.detail.intersections[0].distance;
           var el = evt.detail.els[0];
-          showHUD('raycaster-intersection ' + distance + '\n' + JSON.stringify(point) + '\n' + el.outerHTML);
+          showHUD('raycaster-intersection ' + distance + '\n' + JSON.stringify(point) + '\n' + el.id);
           if (el.getAttribute('class') === 'plane') { el.querySelector('.bbox').setAttribute('opacity', 0.7); }
           ball.setAttribute('position', point);
           ball.setAttribute('visible', true);
