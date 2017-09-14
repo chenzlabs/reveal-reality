@@ -13,23 +13,15 @@
     <script>
       AFRAME.registerComponent('thing', {
         init: function () {
+/*          
           this.el.setAttribute('geometry', {primitive:'box', width:0.01, depth:0.01, height:1});
           this.el.setAttribute('position', {y:0.5});
+*/          
         }
       });            
     </script>
 
     <script>
-/*      
-      // this works on ARKit!      
-      AFRAME.registerShader('cutout', {
-        update: function (oldData) { 
-          this.material.blending = THREE.NoBlending;
-          // this doesn't matter apparently... this.material.transparent = false;
-        },
-        fragmentShader: 'void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0); }'
-      });
-*/      
       AFRAME.registerShader('cutout', {
         update: function (oldData) { 
           this.material.blending = THREE.NoBlending;
@@ -72,27 +64,26 @@ AFRAME.registerGeometry('polygon', {
     <a-scene ar>
       <!-- Without the sky, what we don't draw is punch-through -->
       <a-sky color="#000" opacity="0.7"></a-sky>
+      
       <!-- When we have a raycaster hit, we use this ball to show where. -->
       <a-sphere id="ball" radius="0.01" position="0 0.005 -0.5"></a-sphere>
-
-      <!-- a-entity geometry="primitive:plane" material="shader:cutout" position="0 0.5 -2"></a-entity -->
       
       <a-camera>
         <!-- A hit from AR, rather than A-Frame objects, hits this entity. -->
         <a-entity id="ar-world"></a-entity>
         
         <!-- Declare a cursor, and what objects its raycaster hit (including AR). -->
-        <!-- FIXME: cursor / raycaster origin appears to be significant distance away,  -->
-        <!--        so intersection distance varies significantly from AR hit distance? -->
+        <!-- NOTE: ar-raycaster VRHit uses a "tolerance" fudge factor, so imprecise -->
+        <!--       (and so may not want to use)                                     -->
         <a-entity cursor="fuse:false"
                   raycaster="objects:.plane;recursive:false" 
                   ar-raycaster="el:#ar-world"></a-entity>
         
         <!-- Separate the cursor appearance.-->
-        <a-entity position="0 0 -0.001"
-                  scale="0.00001 0.00001 0.00001"
+        <a-entity position="0 0 -0.1"
+                  scale="0.001 0.001 0.001"
                   geometry="primitive: ring; radiusInner: 0.8; radiusOuter: 1" 
-                  material="color: yellow; shader: flat; transparent:true"></a-entity>
+                  material="color: yellow; shader: flat; transparent:true"></a-entity>        
 
         <!-- Heads-up text display. -->
         <a-text id="hud" 
@@ -140,7 +131,7 @@ AFRAME.registerGeometry('polygon', {
             plane.setAttribute('height', 0.001);
 
             // Make the plane "cut a hole" in the skybox.
-            plane.setAttribute('material', 'shader:cutout;side:double'); //;color:' + colorToUse);
+            plane.setAttribute('material', 'shader:cutout;side:double');
 
             sc.appendChild(plane);
 
@@ -157,7 +148,7 @@ AFRAME.registerGeometry('polygon', {
             plane.tempEuler = new THREE.Euler(0, 0, 0, 'YXZ');
             plane.tempRotation = new THREE.Vector3();            
           } else {
-            colorToUse = plane.getAttribute('material', 'color');
+            colorToUse = plane.querySelector('.bbox').getAttribute('material', 'color');
           }
 
           // Update the plane.
@@ -281,54 +272,6 @@ AFRAME.registerGeometry('polygon', {
               y: cursor.intersection.point.y + 0.5, 
               z: cursor.intersection.point.z});
             sc.appendChild(marker);
-          }
-          
-          // Show plane info on click.
-          // may not have arDisplay until tick after loaded
-          var ardisplay = sc.components['three-ar'].arDisplay;
-          if (!ardisplay) { showHUD('no ardisplay?'); } else {
-            var planes = ardisplay.getPlanes ? ardisplay.getPlanes() : ardisplay.anchors_;
-            // Force plane conformance to common spec (almost latest spec).
-            planes.forEach(function (plane) {
-              // Force draft ARCore conformance to latest spec.
-              if (!plane.identifier) { plane.identifier = plane.id; }
-              if (plane.polygon) { plane.vertices = plane.polygon; }
-              
-              // Unify position and orientation into vector3 and quaternion.                                      
-              // Compute unification (since we have to assume it may be updated.)
-              // Note that although it is possible to construct the arrays for
-              // position and orientation from transform, it's not worth it,
-              // since we will want to use vector3 and quaternion anyway.
-              if (!plane.vector3) { plane.vector3 = new THREE.Vector3(); }
-              if (!plane.quaternion) { plane.quaternion = new THREE.Quaternion(); }
-              if (!plane.rotation) { plane.rotation = new THREE.Euler(0,0,0,'YXZ'); }
-              if (plane.transform) { 
-                // ARKit                
-                tempMat4.fromArray(plane.transform);
-                tempMat4.decompose(plane.vector3, plane.quaternion, tempScale);
-              } else {
-                // ARCore
-                plane.vector3.fromArray(plane.position);
-                plane.quaternion.fromArray(plane.orientation);
-              }
-              plane.rotation.setFromQuaternion(plane.quaternion);
-              if (plane.rotation.x) { plane.rotation.x *= THREE.Math.RAD2DEG; }
-              if (plane.rotation.y) { plane.rotation.y *= THREE.Math.RAD2DEG; }
-              if (plane.rotation.z) { plane.rotation.z *= THREE.Math.RAD2DEG; }
-            });
-              
-            var msg = planes.length + '(vs. ' + Object.keys(sc.components['three-ar-planes'].planes).join(',') + '):\n\n';
-            planes.forEach(function (plane) {              
-              // Write out what we got, for debugging.
-              msg += 
-              'identifier: ' + plane.identifier + '' + // string, per latest spec
-              ' ' + JSON.stringify(plane.vector3) + '' + // unified to THREE.Vector3
-              ' ' + JSON.stringify(plane.rotation) + '' + // unified to THREE.Quaternion
-              ' ' + plane.extent + '' + // number[2], per latest spec
-              //'vertices: ' + plane.vertices + '\n' + // number[3*n], per latest spec
-              '\n';
-            });
-            showHUD(msg);
           }
         });
         
