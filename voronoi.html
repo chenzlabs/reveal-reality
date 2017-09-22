@@ -72,12 +72,12 @@ AFRAME.registerGeometry('polygon', {
     <a-scene ar>
 <!-- FIXME: CORS issue -->
       <a-assets>
-        <img id="contrast-noise" crossorigin="anonymous"
-             src="https://cdn.glitch.com/2d8374de-4ed1-4bfd-a6f4-95e0d4d6a47a%2Fcontrast-noise.png?1506062505936"></img>
+        <img id="bowling-grass" crossorigin="anonymous"
+             src="https://cdn.glitch.com/2d8374de-4ed1-4bfd-a6f4-95e0d4d6a47a%2Fthumb_Bowling_grass_pxr128.jpg?1506060683246"></img>
       </a-assets>
 
       <!-- Without the sky, what we don't draw is punch-through -->
-      <a-sky rotation="0 -90 0" color="#000" opacity="0.7"></a-sky>
+      <a-sky color="#000" opacity="0.7"></a-sky>
       
       <!-- When we have a raycaster hit, we use this ball to show where. -->
       <a-sphere id="ball" radius="0.01" position="0 0.005 -0.5"></a-sphere>
@@ -103,7 +103,7 @@ AFRAME.registerGeometry('polygon', {
         <a-text id="hud" 
                 scale="0.01 0.01 0.01" position="0 -0.025 -0.1" 
                 color="yellow" align="center" 
-                value=""></a-text>
+                value="Hi there"></a-text>
       </a-camera>
     </a-scene>    
     
@@ -197,7 +197,7 @@ AFRAME.registerGeometry('polygon', {
           var bbox = plane.querySelector('.bbox');
           bbox.setAttribute('width', dx);
           bbox.setAttribute('depth', dz);
-  /*
+  
           // Fill out the plane label with informative text.
           // DETAIL: when creating, getAttribute doesn't work this tick
           plane.querySelector('.label').setAttribute('text', {
@@ -221,7 +221,7 @@ AFRAME.registerGeometry('polygon', {
           //+ '\nscale y: ' + plane.getAttribute('scale').y
           //+ '\nscale z: ' + plane.getAttribute('scale').z
           });
-*/          
+          
           // We updated the plane (or added it), so update the raycaster.
           // Because there may be a DOM change, we need to wait a tick.
           if (created) { setTimeout(raycasterNeedsUpdate); } else { raycasterNeedsUpdate(); }
@@ -253,14 +253,14 @@ AFRAME.registerGeometry('polygon', {
           var point = evt.detail.intersections[0].point;
           var distance = evt.detail.intersections[0].distance;
           var el = evt.detail.els[0];
-          //showHUD('raycaster-intersection ' + distance + '\n' + JSON.stringify(point) + '\n' + el.id);
+          showHUD('raycaster-intersection ' + distance + '\n' + JSON.stringify(point) + '\n' + el.id);
           if (el.getAttribute('class') === 'plane') { el.querySelector('.bbox').setAttribute('opacity', 0.7); }
           ball.setAttribute('position', point);
           ball.setAttribute('visible', true);
         });
         raycaster.addEventListener('raycaster-intersection-cleared', function (evt) {
           var el = evt.detail.el;
-          //showHUD('raycaster-intersection-cleared\n' + el.outerHTML);
+          showHUD('raycaster-intersection-cleared\n' + el.outerHTML);
           if (el.getAttribute('class') === 'plane') { el.querySelector('.bbox').setAttribute('opacity', 0.3); }
           ball.setAttribute('visible', false);
         });
@@ -271,78 +271,173 @@ AFRAME.registerGeometry('polygon', {
         addPlaneListeners();
       }
       
-      function goMetalNoise() {
+      function goVoronoi() {
 // This is the JSON for the shader we want to use.
 // Really, we should load this from somewhere.
-// See http://shaderfrog.com/app/view/{id}
+// See http://shaderfrog.com/app/view/789
 var importedShaderJSON = String.raw`
 {
-  "id": 254,
-  "name": "Tiling 4D Perlin Noise",
-  "fragment": "precision highp float;\nprecision highp int;\n\n// (sqrt(5) - 1)/4 = F4, used once below\n#define F4 0.309016994374947451\n#define PI 3.14159\n\nuniform float time;\nuniform vec2 uvScale;\nuniform vec3 color;\nuniform float speed;\n\nvarying vec2 vUv;\n\n// Description : Array and textureless GLSL 2D/3D/4D simplex\n//               noise functions.\n//      Author : Ian McEwan, Ashima Arts.\n//  Maintainer : ijm\n//     Lastmod : 20110822 (ijm)\n//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.\n//               Distributed under the MIT License. See LICENSE file.\n//               https://github.com/ashima/webgl-noise\n//\n\nvec4 mod289(vec4 x) {\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nfloat mod289(float x) {\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\n\nvec4 permute(vec4 x) {\n    return mod289(((x*34.0)+1.0)*x);\n}\n\nfloat permute(float x) {\n    return mod289(((x*34.0)+1.0)*x);\n}\n\nvec4 taylorInvSqrt(vec4 r) {\n    return 1.79284291400159 - 0.85373472095314 * r;\n}\n\nfloat taylorInvSqrt(float r) {\n    return 1.79284291400159 - 0.85373472095314 * r;\n}\n\nvec4 grad4(float j, vec4 ip) {\n    const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);\n    vec4 p,s;\n\n    p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;\n    p.w = 1.5 - dot(abs(p.xyz), ones.xyz);\n    s = vec4(lessThan(p, vec4(0.0)));\n    p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;\n\n    return p;\n}\n\nfloat snoise(vec4 v) {\n    const vec4  C = vec4( 0.138196601125011,  // (5 - sqrt(5))/20  G4\n            0.276393202250021,  // 2 * G4\n            0.414589803375032,  // 3 * G4\n            -0.447213595499958); // -1 + 4 * G4\n\n    // First corner\n    vec4 i  = floor(v + dot(v, vec4(F4)) );\n    vec4 x0 = v -   i + dot(i, C.xxxx);\n\n    // Other corners\n\n    // Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)\n    vec4 i0;\n    vec3 isX = step( x0.yzw, x0.xxx );\n    vec3 isYZ = step( x0.zww, x0.yyz );\n    //  i0.x = dot( isX, vec3( 1.0 ) );\n    i0.x = isX.x + isX.y + isX.z;\n    i0.yzw = 1.0 - isX;\n    //  i0.y += dot( isYZ.xy, vec2( 1.0 ) );\n    i0.y += isYZ.x + isYZ.y;\n    i0.zw += 1.0 - isYZ.xy;\n    i0.z += isYZ.z;\n    i0.w += 1.0 - isYZ.z;\n\n    // i0 now contains the unique values 0,1,2,3 in each channel\n    vec4 i3 = clamp( i0, 0.0, 1.0 );\n    vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );\n    vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );\n\n    //  x0 = x0 - 0.0 + 0.0 * C.xxxx\n    //  x1 = x0 - i1  + 1.0 * C.xxxx\n    //  x2 = x0 - i2  + 2.0 * C.xxxx\n    //  x3 = x0 - i3  + 3.0 * C.xxxx\n    //  x4 = x0 - 1.0 + 4.0 * C.xxxx\n    vec4 x1 = x0 - i1 + C.xxxx;\n    vec4 x2 = x0 - i2 + C.yyyy;\n    vec4 x3 = x0 - i3 + C.zzzz;\n    vec4 x4 = x0 + C.wwww;\n\n    // Permutations\n    i = mod289(i);\n    float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);\n    vec4 j1 = permute( permute( permute( permute (\n                        i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))\n                    + i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))\n                + i.y + vec4(i1.y, i2.y, i3.y, 1.0 ))\n            + i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));\n\n    // Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope\n    // 7*7*6 = 294, which is close to the ring size 17*17 = 289.\n    vec4 ip = vec4(1.0/294.0, 1.0/49.0, 1.0/7.0, 0.0) ;\n\n    vec4 p0 = grad4(j0,   ip);\n    vec4 p1 = grad4(j1.x, ip);\n    vec4 p2 = grad4(j1.y, ip);\n    vec4 p3 = grad4(j1.z, ip);\n    vec4 p4 = grad4(j1.w, ip);\n\n    // Normalise gradients\n    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n    p0 *= norm.x;\n    p1 *= norm.y;\n    p2 *= norm.z;\n    p3 *= norm.w;\n    p4 *= taylorInvSqrt(dot(p4,p4));\n\n    // Mix contributions from the five corners\n    vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);\n    vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4)            ), 0.0);\n    m0 = m0 * m0;\n    m1 = m1 * m1;\n    return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))\n            + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;\n\n}\n\nfloat surface( vec4 coord ) {\n\n\tfloat n = 0.0;\n\n\tn += 0.25 * abs( snoise( coord * 4.0 ) );\n\tn += 0.5 * abs( snoise( coord * 8.0 ) );\n\tn += 0.25 * abs( snoise( coord * 16.0 ) );\n\tn += 0.125 * abs( snoise( coord * 32.0 ) );\n\n\treturn n;\n\n}\n\nvoid main() {\n\n    float s = vUv.x * uvScale.x;\n    float t = vUv.y * uvScale.y;\n    \n    // Tiling 4d noise based on\n    // https://gamedev.stackexchange.com/questions/23625/how-do-you-generate-tileable-perlin-noise/23639#23639\n    float multiplier = 1.0 / ( 2.0 * PI );\n    float nx = cos( s * 2.0 * PI ) * multiplier;\n    float ny = cos( t * 2.0 * PI ) * multiplier;\n    float nz = sin( s * 2.0 * PI ) * multiplier;\n    float nw = sin( t * 2.0 * PI ) * multiplier;\n\n    float surf = surface( vec4( nx, ny, nz, nw ) + time * speed );\n\n    gl_FragColor = vec4( color * vec3( surf ), 1.0 );\n\n}\n",
+  "id": 789,
+  "name": "Voronoi With Noise",
+  "fragment": "precision highp float;\nprecision highp int;\nuniform sampler2D image;\nuniform vec2 resolution;\nuniform float time;\nuniform float contrast;\nuniform float noiseScale;\nuniform float saturation;\nuniform float morphSpeed;\nvarying vec2 vUv;\n\nfloat rnd(float x) {\n    return fract(200.0 * sin(185.13 * x));\n}\n\nvec3 rnd3(float x) {\n    return vec3(rnd(x), rnd(x + 0.1), rnd(x + 0.2));\n}\n\nfloat hash(float x, float y, float z) {\n    return (x + 432.432 * y - 1178.65 * z);\n}\n\nfloat hash(vec3 v) {\n    return dot(v, vec3(1., 32.432, -1178.65));\n}\n\nvec4 Noise(vec3 uvw) {\n    vec3 uvwi = floor(uvw);\n    float dmin = 1e9;\n    float d2min = 1e9;\n    float nmin = -1.0;\n    for (int i = -1; i <= 1; i++) {\n        for (int j = -1; j <= 1; j++) {\n            for (int k = -1; k <= 1; k++) {\n                vec3 c = uvwi + vec3(float(i), float(j), float(k));\n                float n = hash(c);\n                vec3 p = c + rnd3(n + 0.1);\n                float d = length(p - uvw);\n                if (d < dmin) {\n                    d2min = dmin;\n                    dmin = d;\n                    nmin = n;\n                } else if (d < d2min) {\n                    d2min = d;\n                }\n            }\n        }\n    }\n    return vec4( dmin, d2min, d2min - dmin, nmin );\n}\n\nvoid main() {\n    \n    vec3 uvw = vec3( vUv * resolution, sin( time * morphSpeed ) );\n\n    uvw *= 4.0 * ( 0.7 + 0.5 * vec3( 0.5, 0.5, 0.0 ) );\n    vec3 uvw0 = uvw;\n    uvw += 0.2 * texture2D( image, 0.1 * noiseScale * uvw.xy ).rgb;\n    vec4 noise = Noise( uvw );\n    vec3 col = mix( vec3( 1.0 ), rnd3( noise.a ), saturation );\n    float v = noise.z;\n    int mode = int( mod( 0.25 * time, 4.0 ) );\n    v = pow( v, contrast );\n    gl_FragColor = vec4( v * col, 1.0 );\n    \n}",
   "vertex": "/**\n* Example Vertex Shader\n* Sets the position of the vertex by setting gl_Position\n*/\n\n// Set the precision for data types used in this shader\nprecision highp float;\nprecision highp int;\n\n// Default THREE.js uniforms available to both fragment and vertex shader\nuniform mat4 modelMatrix;\nuniform mat4 modelViewMatrix;\nuniform mat4 projectionMatrix;\nuniform mat4 viewMatrix;\nuniform mat3 normalMatrix;\n\n// Default uniforms provided by ShaderFrog.\nuniform vec3 cameraPosition;\nuniform float time;\n\n// Default attributes provided by THREE.js. Attributes are only available in the\n// vertex shader. You can pass them to the fragment shader using varyings\nattribute vec3 position;\nattribute vec3 normal;\nattribute vec2 uv;\nattribute vec2 uv2;\n\n// Examples of variables passed from vertex to fragment shader\nvarying vec3 vPosition;\nvarying vec3 vNormal;\nvarying vec2 vUv;\nvarying vec2 vUv2;\n\nvoid main() {\n\n    // To pass variables to the fragment shader, you assign them here in the\n    // main function. Traditionally you name the varying with vAttributeName\n    vNormal = normal;\n    vUv = uv;\n    vUv2 = uv2;\n    vPosition = position;\n\n    // This sets the position of the vertex in 3d space. The correct math is\n    // provided below to take into account camera and object data.\n    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\n}",
   "uniforms": {
     "cameraPosition": {
       "name": "cameraPosition",
+      "displayName": null,
       "type": "v3",
       "glslType": "vec3",
+      "useGridHelper": false,
+      "useRange": false,
+      "range": null,
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
       "description": ""
     },
     "time": {
       "name": "time",
+      "displayName": null,
       "type": "f",
       "glslType": "float",
+      "useGridHelper": false,
+      "useRange": false,
+      "range": null,
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
       "description": ""
     },
-    "color": {
-      "name": "color",
-      "type": "c",
-      "glslType": "vec3",
-      "value": {
-        "r": "1",
-        "g": "1",
-        "b": "1"
-      },
-      "description": "Example light color"
-    },
-    "uvScale": {
-      "name": null,
+    "resolution": {
+      "name": "resolution",
+      "displayName": null,
       "type": "v2",
       "glslType": "vec2",
-      "value": {
-        "x": "1",
-        "y": "1"
+      "useGridHelper": true,
+      "useRange": false,
+      "range": {
+        "min": {
+          "x": "1",
+          "y": "1"
+        },
+        "max": {
+          "x": "4",
+          "y": "4"
+        }
       },
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
       "description": ""
     },
-    "speed": {
-      "name": null,
+    "image": {
+      "name": "image",
+      "displayName": null,
+      "type": "t",
+      "glslType": "sampler2D",
+      "useGridHelper": false,
+      "useRange": false,
+      "range": null,
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
+      "description": ""
+    },
+    "contrast": {
+      "name": "contrast",
+      "displayName": null,
       "type": "f",
       "glslType": "float",
-      "value": "0.01",
+      "useGridHelper": false,
+      "useRange": true,
+      "range": {
+        "min": "0",
+        "max": "1.5"
+      },
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
+      "description": ""
+    },
+    "morphSpeed": {
+      "name": "morphSpeed",
+      "displayName": null,
+      "type": "f",
+      "glslType": "float",
+      "useGridHelper": false,
+      "useRange": true,
+      "range": {
+        "min": "0",
+        "max": "2"
+      },
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
+      "description": ""
+    },
+    "saturation": {
+      "name": "saturation",
+      "displayName": null,
+      "type": "f",
+      "glslType": "float",
+      "useGridHelper": false,
+      "useRange": true,
+      "range": {
+        "min": "0",
+        "max": "1"
+      },
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
+      "description": ""
+    },
+    "noiseScale": {
+      "name": "noiseScale",
+      "displayName": null,
+      "type": "f",
+      "glslType": "float",
+      "useGridHelper": false,
+      "useRange": true,
+      "range": {
+        "min": "0",
+        "max": "2"
+      },
+      "isRandom": false,
+      "randomRange": null,
+      "useToggle": false,
+      "toggle": null,
       "description": ""
     }
   },
-  "url": "http://shaderfrog.com/app/view/254",
+  "url": "http://shaderfrog.com/app/view/789",
   "user": {
     "username": "andrewray",
     "url": "http://shaderfrog.com/app/profile/andrewray"
   }
 }
-`;            
+`;              
         // Import the shader.
-        // Note that this one has default values in the JSON.
         AFRAME.utils.importShaderFrog(
-          "noise", // shader name
-          importedShaderJSON,     // shader JSON string
+          "voronoi",    // shader name
+          importedShaderJSON, // shader JSON string      
+          // supply defaults, since they aren't in the JSON :-/
           {
-            uvScale: '1 1',
-            speed: 0.01
-          }
-        );
+            resolution: {x:4, y:4},
+            contrast: 0.28763934,
+            morphSpeed: 0.18484549,
+            saturation: 0.89614788,
+            noiseScale: 0.44673346
+          });
 
         // Apply the shader to scene entities.
-        document.querySelector('a-sky').setAttribute('material', {shader:'noise', color:'cyan'});
+        document.querySelector('a-sky').setAttribute('material', {shader:'voronoi', image:'#bowling-grass'});
       }
       
       function onSceneLoaded() { 
@@ -353,12 +448,11 @@ var importedShaderJSON = String.raw`
           // If the cursor has an intersection, place a marker.
           var cursor = sc.querySelector('[ar-raycaster]').components.cursor;
           if (cursor.intersection) {
-            var marker = document.createElement('a-cone');
-            marker.setAttribute('radius-top', 0.02);
-            marker.setAttribute('radius-bottom', 0);
+            var marker = document.createElement('a-box');
+            marker.setAttribute('width', 0.01);
+            marker.setAttribute('depth', 0.01);
             marker.setAttribute('height', 1);
             marker.setAttribute('color', 'orange');
-            marker.setAttribute('material', {shader:'noise'});
             marker.setAttribute('position', {
               x: cursor.intersection.point.x, 
               y: cursor.intersection.point.y + 0.5, 
@@ -369,7 +463,7 @@ var importedShaderJSON = String.raw`
         
         addEventListeners(); 
         
-        goMetalNoise();
+        goVoronoi();
       }
       
       if (sc.hasLoaded) { onSceneLoaded(); }
